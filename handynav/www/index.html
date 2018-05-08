@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html manifest="appcache-tiles.appcache">
+  <head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+
+    <link rel="stylesheet" type="text/css" href="css/esri.css">
+		<link rel="stylesheet" type="text/css" href="css/fontawesome-all.css">
+    <link rel="stylesheet" type="text/css" href="css/index.css">
+    <link rel="stylesheet" type="text/css" href="css/handynav.css">
+
+    <script type="text/javascript" src="https://js.arcgis.com/3.23/"></script>
+		<script type="text/javascript" src="js/jquery-3.2.1.min.js"></script>
+
+    <script type="text/javascript">
+
+      // Buffer to record if the menu is opened or closed.
+      var menuopen = false;
+
+      // This will be used in the window resize process (when the screen orientation is changed).
+      var origwidth = 0;
+      var origheight = 0;
+
+      // Open/close navigation menu
+      function close_navigation(){
+        $("#menu_shortcut").trigger("click");
+      }
+
+      // This portion doesn't require the device to be ready.
+      $(document).ready(function(){
+
+        // When the manu shortcut button is pressed
+        $("#menu_shortcut").click(function(){
+          $(".pop_up").hide();
+          menuopen = !menuopen;
+          $("#navigation_container").animate({width:'toggle'}, 100);
+
+          if(menuopen){
+            $(this).css("background-color", "rgba(0,0,0,0.1)");
+            $("#pause_overlay").fadeIn(100);
+          } else {
+            $(this).css("background-color", "transparent");
+            $("#pause_overlay").fadeOut(100);
+          }
+
+        });
+
+        // Center the vertical alignment of help box and mark location notification boxes
+        $("#help_box").css("top", ((($(window).height() - 50) / 2) - ($("#help_box").height() / 2)) + "px");
+        $("#notify_mark_success").css("top", ((($(window).height() - 50) / 2) - ($("#notify_mark_success").height() / 2)) + "px");
+        $("#error_box").css("top", ((($(window).height() - 50) / 2) - ($("#error_box").height() / 2)) + "px");
+
+      });
+    </script>
+
+    <title>HandyNav</title>
+  </head>
+  <body>
+
+      <!-- The black translucent overlay that covers the main process to emphasize the modal boxes -->
+      <div id="pause_overlay" class="pop_up">
+      </div>
+      <div id="pause_overlay_modal" class="pop_up">
+      </div>
+
+      <!-- The menu shortcut icon -->
+      <div id="menu_shortcut">
+        <i class="fa fa-bars fa-fw" id="menu_shortcut_icon" aria-hidden="true"></i>
+      </div>
+
+      <!-- The loading box -->
+      <div id="loading_box" class="pop_up">
+        <img src="img/loading.gif">
+      </div>
+
+      <!-- The offline notice message -->
+      <div id="offline_box">
+        <b>Syncing...</b>
+      </div>
+
+      <!-- The error box  -->
+      <div id="error_box" class="pop_up">
+        <b>An Error Occured</b>
+        <i class="far fa-times-circle" onclick="$('#error_box').hide(); $('#pause_overlay_modal').fadeOut(100);" aria-hidden="true"></i>
+        <br>
+        <span id="error_content">
+        </span>
+      </div>
+
+      <!-- The search location box -->
+      <div id="search_box" class="pop_up">
+        <b>Find Location</b>
+        <i class="fas fa-times search_box_close" onclick="$('#search_box').hide(); $('#pause_overlay_modal').fadeOut(100);" aria-hidden="true"></i>
+        <br>
+        <div id="search_box_input" type="text"></div>
+      </div>
+
+      <!-- The mark location success notification box -->
+      <div id="notify_mark_success" class="pop_up">
+        <i class="fas fa-times" onclick="$('#notify_mark_success').hide(); $('#pause_overlay_modal').fadeOut(100);" aria-hidden="true"></i>
+        <p style="text-align: center;">
+          Your marked location is now saved in your gallery!
+        </p>
+      </div>
+
+      <!-- The help box -->
+      <div id="help_box" class="pop_up">
+        <span id="help_box_title">
+          <b>Help</b>
+          <i class="fas fa-times" onclick="$('#help_box').hide(); $('#pause_overlay_modal').fadeOut(100);" aria-hidden="true"></i>
+        </span>
+        <br>
+        <p>
+          With HandyNav, you can navigate your current and future location in a map and mark that location for later use.
+        </p>
+        <p>
+          When you mark a location, the app creates a screenshot of the area and saves it to your phone. To do this, click the <b>Mark Location</b> option in the options menu. To open the tools menu, click the bars icon on the top left corner of the app.
+        </p>
+        <p>
+          You can also share your location to your freinds by clicking <b>Share Location</b> on the tools menu.
+        </p>
+      </div>
+
+      <!-- The main app container -->
+      <div class="app">
+
+        <!-- The header box -->
+    		<div id="header">
+    			<div id="header_text">
+    				<b>HandyNav</b>
+    			</div>
+    		</div>
+
+        <!-- The navigation box -->
+    		<div id="navigation_container">
+    			<ul id="navigation" type="none">
+    				<li>
+    					<b>Menu</b>
+    				</li>
+    				<li onclick="close_navigation(); $('#search_box').show();">
+    					Find Location
+    				</li>
+    				<li id="current_location">
+    					Get Current Location
+    				</li>
+    				<li id="mark_location">
+    					Mark Location
+    				</li>
+    				<li id="share_location">
+      				Share Location
+    				</li>
+    				<li onclick="close_navigation(); $('#help_box').show(); $('#pause_overlay_modal').fadeIn(100);">
+    					Help
+    				</li>
+    			</ul>
+          <div id="app_version">
+             App Version v1.0.0
+          </div>
+    		</div>
+
+        <!-- The map canvas -->
+    		<div id="map">
+        </div>
+    </div>
+
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="js/index.js"></script>
+    <script type="text/javascript">
+
+      // These components are called at the bottom of the procedures to make sure all the HTML elements are loaded
+      // - this prevents error when the JavaScript references a HTML element
+      document.addEventListener("deviceready", function(){
+
+        // Buffer variables
+        var long =    -117.195646;
+        var lat =     34.056397;
+        var mmap =    -1;
+        var search =  -1;
+        var search_disabled = true;
+        var glayer;
+        var marker;
+        var marker_instance;
+        var permissionenabled = false;
+
+        // Check if permission is granted
+        if(window.location.href.indexOf("permission_granted") !== -1) permissionenabled = true;
+
+        // Actual permission checking:
+        if(!permissionenabled){
+
+          // Check if permission is already granted.
+          cordova.plugins.diagnostic.getLocationAuthorizationStatus(function(status){
+              switch(status){
+
+                  // Yes, it is granted, redirect the user to index.html?permission_granted
+                  case cordova.plugins.diagnostic.permissionStatus.GRANTED:
+                    window.location.replace("./index.html?permission_granted");
+                  break;
+
+                  // No, it is not granted, request permission
+                  case cordova.plugins.diagnostic.permissionStatus.NOT_REQUESTED:
+                  case cordova.plugins.diagnostic.permissionStatus.DENIED:
+
+                    // Show the overlay to indicate to the user that a process is ongoing
+                    $("#pause_overlay_modal").show();
+
+                    // The actual permission requesting
+                    cordova.plugins.diagnostic.requestLocationAuthorization(function(status){
+                      switch(status){
+
+                        // Permission was granted by the user, redirect the user to index.html?permission_granted
+                        case cordova.plugins.diagnostic.permissionStatus.GRANTED:
+                          $("#loading_box").show();
+                          $(".pop_up").hide();
+                          window.location.replace("./index.html?permission_granted");
+                        break;
+                      }
+                    }, function(error){
+                    });
+
+                  break;
+              }
+          }, function(error){
+          });
+        }
+
+        // The permissions are granted, load the main JavaScript components.
+        if(permissionenabled == true){
+
+          // Detect swipe function
+          // Taken from : http://javascriptkit.com/javatutors/touchevents2.shtml
+          function swipedetect(el, callback){
+
+              var touchsurface = el,
+              swipedir,
+              startX,
+              startY,
+              distX,
+              distY,
+              threshold = 50,
+              restraint = 100,
+              allowedTime = 300,
+              elapsedTime,
+              startTime,
+              handleswipe = callback || function(swipedir){};
+
+              touchsurface.addEventListener('touchstart', function(e){
+                  var touchobj = e.changedTouches[0];
+                  swipedir = 'none';
+                  dist = 0;
+                  startX = touchobj.pageX;
+                  startY = touchobj.pageY;
+                  startTime = new Date().getTime();
+              }, false);
+
+              touchsurface.addEventListener('touchend', function(e){
+                  var touchobj = e.changedTouches[0];
+                  distX = touchobj.pageX - startX;
+                  distY = touchobj.pageY - startY;
+                  elapsedTime = new Date().getTime() - startTime;
+                  if (elapsedTime <= allowedTime){
+                      if (Math.abs(distX) >= threshold && Math.abs(distY) <= restraint){
+                          swipedir = (distX < 0)? 'left' : 'right';
+                      }
+                      else if (Math.abs(distY) >= threshold && Math.abs(distX) <= restraint){
+                          swipedir = (distY < 0)? 'up' : 'down';
+                      }
+                  }
+                  handleswipe(swipedir);
+              }, false);
+          }
+
+          // Location success call-back, get the new location longitude and latutide.
+          var LocateOnSuccess = function(position) {
+            lat = position.coords.latitude;
+            long = position.coords.longitude;
+          };
+
+          // Location error call-back, show the erro to the user.
+          function LocateOnError(error) {
+            $("#pause_overlay_modal").show();
+            $("#error_box").show();
+            $("#error_content").html("<p>An error has occured while processing your current location. Please make sure that the location feature is enabled on your device.</p><p>Error Code: Mark Location Failed<br>Error Message: " + error);
+          }
+
+          navigator.geolocation.getCurrentPosition(LocateOnSuccess, LocateOnError);
+
+          // Create the map
+          // Add the marker
+          // Initiate the search location feature
+          // Example for picture marker symbol taken from https://community.esri.com/thread/104307
+          require([ "esri/map",
+                    "esri/graphic",
+                    "esri/symbols/PictureMarkerSymbol",
+                    "esri/geometry/Point",
+                    "esri/SpatialReference",
+                    "esri/dijit/Search",
+                    "dojo/on",
+                    "dojo/domReady!"],
+
+            // Create the map and initiate classes
+            function (Map, Graphic, PictureMarkerSymbol, Point, SpatialReference, Search, on) {
+              mmap = new Map("map", {
+              basemap: "streets",
+              center: [long, lat],
+              zoom: 10
+            });
+
+            // Produce the marker symbol from img/pin.png
+            marker = new PictureMarkerSymbol('img/pin.png', 128, 128);
+
+            // Only process when the map is fully loaded
+            mmap.on("load", function() {
+
+              // Create the marker
+              var p = new Point(long, lat, new SpatialReference(4326));
+              glayer = new Graphic(p, marker);
+              marker_instance = mmap.graphics.add(glayer);
+
+              // Initiate the search box
+              var sbox = new Search({
+                map: mmap,
+                enableLabel: false,
+                enableInfoWindow: false
+              }, "search_box_input");
+              sbox.sources[0].highlightSymbol = marker;
+              sbox.startup();
+
+              // When a result from location search is found
+              // relocate the marker (remove the last one, the search feature will add the new one)
+              on(sbox, 'search-results', function(e) {
+                if(search_disabled){
+                  mmap.graphics.clear();
+                  mmap.removeLayer(glayer);
+                  search_disabled = false;
+                }
+              });
+
+              // When the search box is cleared, record the event (referenced later in the current location)
+              on(sbox, 'clear-search', function(e) {
+                search_disabled = true;
+              });
+
+            });
+          });
+
+          // Get current location method
+          function current_location(){
+
+            // Hide any modal boxes present
+            $(".pop_up").hide();
+
+            // Get the current location
+            navigator.geolocation.getCurrentPosition(LocateOnSuccess, LocateOnError);
+
+            // Move the markers to the new position
+            require([ "esri/map",
+                      "esri/graphic",
+                      "esri/symbols/PictureMarkerSymbol",
+                      "esri/geometry/Point",
+                      "esri/SpatialReference",
+                      "esri/dijit/Search",
+                      "dojo/on",
+                      "dojo/domReady!"], function(Map, Graphic, PictureMarkerSymbol, Point, SpatialReference, Search, on) {
+
+              // If there is a marker present, remove it.
+              if(!search_disabled){
+                mmap.graphics.clear();
+                mmap.removeLayer(glayer);
+                search_disabled = true;
+              }
+
+              // Create a new marker and place it in the new location
+              var point = new Point(long, lat);
+              mmap.centerAt(point);
+              glayer = new Graphic(point, marker);
+              mmap.graphics.add(glayer);
+
+            });
+          }
+
+          // Mark location method
+          function mark_location(){
+
+            // Hide other modal boxes present
+            $(".pop_up").hide();
+
+            // Allow the app to delay 2000 milliseconds before executing...
+            setTimeout(function(){
+
+              // Hide the overlays and loading box after 2000 milliseconds
+              $("#pause_overlay_modal").hide();
+              $("#loading_box").hide();
+
+              // And execute... after 10 milliseconds
+              setTimeout(function(){
+
+                // Create the screenshot
+                window.navigator.screenshot.save(function(error,res){
+
+                  // After the screenshot is taken..
+                  // show the mark location success notice
+                  // show the header... all the default elements
+                  // back to normal...
+                  mmap.showZoomSlider();
+                  $("#pause_overlay_modal").fadeIn(100);
+                  $("#notify_mark_success").show();
+                  $("#header").show();
+                  $("#map").css("top", "40px");
+                  $("#map").css("height", "calc(100% + 40px)");
+                  $("#menu_shortcut_icon").show();
+
+                  // If an error has occured, show it.
+                  if(error){
+                    $("#pause_overlay_modal").show();
+                    $("#error_box").show();
+                    $("#error_content").html("<p>An error has occured while processing your request. Please try again.</p>");
+                  }
+                });
+              }, 10);
+            }, 2000);
+
+            // Hide the elements that we don't want shown on the screenshot
+            mmap.hideZoomSlider();
+            $("#map").css("top", "0");
+            $("#map").css("height", "100%");
+            $("#header").hide();
+            $("#menu_shortcut_icon").hide();
+            $("#menu_shortcut").trigger("click");
+            $("#loading_box").show();
+            $("#pause_overlay_modal").show();
+          }
+
+          // Share location method
+          function share_location(){
+            $(".pop_up").hide();
+
+            // Prepare the "shared" information
+            var options = {
+              message: 'I am here:',
+              subject: 'My Location - HandyNav',
+              url: 'https://www.google.com/maps/search/?api=1&query=' + (lat).toString() + ',' + (long).toString(),
+              chooserTitle: 'HandyNav App'
+            }
+
+            // On success, no procedure
+            var onSuccess = function(result) {
+            }
+
+            // On error, notify the user
+            var onError = function(msg) {
+              $("#error_content").html("<p>An error has occured while processing your request. Please try again.");
+              $("#menu_shortcut").trigger("click");
+            }
+
+            // Execute sharing...
+            window.plugins.socialsharing.shareWithOptions(options, onSuccess, onError);
+          }
+
+          // Window resize - screen orientation changed...
+          // record the original width and height of the window...
+          // this is used as opposed to the current window width and height
+          // these variables are more reliable and accurate than $(window).width() variables that are
+          // passed on by the device in the later process...
+          origwidth = $(window).width();
+          origheight = $(window).height();
+
+          // Detect screen orientation changes (window resize)
+        	$(window).resize(function(){
+
+            // Reposition and resize the map to compensate with the screen resolution change
+            if(mmap){
+              mmap.reposition();
+              mmap.resize();
+            }
+
+            // Reposition the modal boxes to be placed in the middle of the screen...
+            // when on landscape the screen is shorter, on portrait the screen is taller
+            if($(window).height() > origwidth){
+              $("#help_box").css("top", (((origheight - 50) / 2) - ($("#help_box").height() / 2)) + "px");
+              $("#notify_mark_success").css("top", (((origheight - 50) / 2) - ($("#notify_mark_success").height() / 2)) + "px");
+              $("#error_box").css("top", (((origheight - 50) / 2) - ($("#error_box").height() / 2)) + "px");
+            } else {
+              $("#help_box").css("top", (((origwidth - 50) / 2) - ($("#help_box").height() / 2)) + "px");
+              $("#notify_mark_success").css("top", (((origwidth - 50) / 2) - ($("#notify_mark_success").height() / 2)) + "px");
+              $("#error_box").css("top", (((origwidth - 50) / 2) - ($("#error_box").height() / 2)) + "px");
+            }
+        	});
+
+          // Initiate swipe detection... detect swipes inside the navigation menu
+          var el = document.getElementById('navigation_container');
+          swipedetect(el, function(swipedir){
+            if (swipedir == 'left' && menuopen == true){
+              close_navigation();
+            }
+          });
+
+          // Attach the click event listeners to the navigation menu items
+          $("#current_location").click(function(){ close_navigation(); current_location(); });
+          $("#mark_location").click(function(){ mark_location(); });
+          $("#share_location").click(function(){ close_navigation(); share_location(); });
+
+
+        }
+      }, false);
+    </script>
+  </body>
+</html>
